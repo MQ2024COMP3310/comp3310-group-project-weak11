@@ -78,3 +78,56 @@ def deletePhoto(photo_id):
   flash('Photo id %s Successfully Deleted' % photo_id)
   return redirect(url_for('main.homepage'))
 
+
+# This is called when clicking on Comment.
+@main.route('/<user>/photo/<int:photo_id>/comment/add', methods = ['POST'])
+def new_comment(photo_id):
+  commented_photo = db.session.query(Photo).filter_by(id = photo_id).one()  
+  if request.method == 'POST':
+    user_input = request.form['comment']
+    for word in word_filter:  #This checks user input against either a dictionary or a database of banned terms
+      if word in user_input:
+        flash('Your comment may violate our community guidelines, please reconsider or change your wording')
+        return redirect(url_for(commented_photo))
+      return user_input
+    new_comment = Comment(name = request.form['user'], comment = user_input)
+    db.session.add(new_comment)
+    db.session.commit()
+    flash('Comment Successfully  Added %s' % commented_photo.name)
+    return redirect(url_for('main.photo'))
+  else:
+    return render_template('comment.html', photo = commented_photo)
+
+# This is called when clicking on Edit Comment.
+@main.route('/<user>/photo/<int:comment_id>/comment/edit', methods = ['PUT'])
+def edit_comment(comment_id):
+  edited_comment = db.session.query(Photo).filter_by(id = comment_id).one()  
+  if request.method == 'PUT':
+    user_input = request.form['comment']
+    for word in word_filter:  #This checks user input against either a dictionary or a database of banned terms
+      if word in user_input:
+        flash('Your comment may violate our community guidelines, please reconsider or change your wording')
+        return redirect(url_for('main.photo'))
+      return user_input
+    edited_comment.name = request.form['user']
+    edited_comment.comment = user_input
+    db.session.add(edited_comment)
+    db.session.commit()
+    flash('Comment Successfully Changed %s' % edited_comment.name)
+    return redirect(url_for('main.homepage'))
+  else:
+    return render_template('comment.html', comment = edited_comment)
+  
+
+# This is called when clicking on Search.
+@main.route('/search', methods = ['GET'])
+def search():
+  user_input = request.args.get('user_input')
+  if user_input and user_input.isalnum():  #Prevents injection by only allowing alphanumeric characters.
+    result = db.session.query(Photo).filter_by(handle = user_input).all()
+    return render_template('index.html', photos = result)
+  else:
+    flash('Please only input alphanumeric charachters!')
+    return redirect(url_for('main.homepage'))
+  
+  
